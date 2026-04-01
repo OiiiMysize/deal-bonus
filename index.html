@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Deal Bonus</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+:root{
+  --bg:#0f0e0c;--surface:#1a1916;--border:#2e2c28;
+  --common:#a0a0b0;--uncommon:#2980b9;--rare:#d4a017;--legendary:#8e44ad;
+  --text:#f0ede6;--muted:#7a7670;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px}
+
+/* ── SCREEN SYSTEM ── */
+.screen{display:none;flex-direction:column;height:100%;overflow:hidden}
+.screen.active{display:flex}
+
+/* ── SETUP SCREEN ── */
+#setup{padding:28px 20px 32px;overflow-y:auto;gap:16px;align-items:stretch}
+.setup-logo{font-family:'Bebas Neue',sans-serif;font-size:64px;line-height:0.9;letter-spacing:5px;text-align:center;background:linear-gradient(135deg,var(--rare) 30%,var(--legendary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.setup-sub{text-align:center;color:var(--muted);font-size:13px;letter-spacing:2px;text-transform:uppercase}
+.players-list{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.player-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 14px;transition:border-color 0.2s}
+.player-row:focus-within{border-color:var(--muted)}
+.player-swatch{width:30px;height:30px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,0.15)}
+.player-row input{flex:1;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;outline:none}
+.player-row input::placeholder{color:var(--muted)}
+.remove-btn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;flex-shrink:0}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:1px dashed var(--border);border-radius:14px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;padding:12px;cursor:pointer;width:100%;transition:all 0.2s}
+.add-btn:active{color:var(--text);border-color:var(--muted)}
+.start-btn{background:linear-gradient(135deg,var(--rare),#a07010);border:none;border-radius:14px;color:#0a0900;font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;padding:15px;cursor:pointer;transition:opacity 0.2s,transform 0.15s;margin-top:4px}
+.start-btn:active{transform:scale(0.97)}
+.start-btn:disabled{opacity:0.35;cursor:default}
+
+/* ── GAME SCREEN ── */
+#game{background:var(--bg)}
+.game-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.round-info{display:flex;flex-direction:column}
+.round-label{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;line-height:1}
+.direction-label{font-size:11px;color:var(--muted);letter-spacing:1px}
+.header-btns{display:flex;gap:10px;align-items:center}
+.icon-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:6px;line-height:1;border-radius:8px;transition:color 0.2s}
+.icon-btn:active{color:var(--text)}
+
+/* player strip */
+.player-strip{display:flex;gap:8px;padding:10px 14px;overflow-x:auto;flex-shrink:0;scrollbar-width:none;border-bottom:1px solid var(--border)}
+.player-strip::-webkit-scrollbar{display:none}
+.p-chip{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;max-width:52px;cursor:pointer;flex-shrink:0;padding:4px;border-radius:10px;transition:background 0.2s}
+.p-chip:active{background:rgba(255,255,255,0.05)}
+.p-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:17px;border:2px solid transparent;transition:all 0.3s;opacity:0.45;position:relative;overflow:visible}
+.p-avatar.active{opacity:1;box-shadow:0 0 0 2px rgba(255,255,255,0.6),0 0 14px rgba(255,255,255,0.15)}
+.p-avatar.miss-flag::after{content:'✗';position:absolute;top:-4px;right:-4px;font-size:11px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;line-height:16px;font-family:'DM Sans',sans-serif;font-weight:700}
+.p-name{font-size:9px;color:var(--muted);text-align:center;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color 0.2s}
+.p-name.active{color:var(--text)}
+
+/* card area */
+.card-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px;position:relative;overflow:hidden}
+.turn-label{font-size:13px;color:var(--muted);text-align:center;min-height:20px}
+.turn-label strong{color:var(--text)}
+
+/* card flip */
+.card-wrap{width:250px;height:370px;perspective:1000px;cursor:pointer;flex-shrink:0}
+.card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.6s cubic-bezier(0.4,0,0.2,1)}
+.card-inner.flipped{transform:rotateY(180deg)}
+.card-inner.no-anim{transition:none!important}
+.c-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid var(--border)}
+.c-back{background:var(--surface);background-image:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.03) 0%,transparent 70%)}
+.c-back-logo{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:5px;color:var(--muted);text-align:center;line-height:1.15}
+.c-back-hint{font-size:11px;color:var(--muted);opacity:0.5;letter-spacing:2px;text-transform:uppercase;margin-top:14px;animation:hint-pulse 2.2s ease-in-out infinite}
+@keyframes hint-pulse{0%,100%{opacity:0.3}50%{opacity:0.7}}
+.c-front{background:var(--surface);transform:rotateY(180deg);padding:24px 18px;gap:0}
+.c-front.r-common{border-color:var(--common);box-shadow:0 0 12px rgba(160,160,176,0.25),inset 0 0 40px rgba(160,160,176,0.03)}
+.c-front.r-uncommon{border-color:var(--uncommon);box-shadow:0 0 20px rgba(41,128,185,0.4),inset 0 0 40px rgba(41,128,185,0.05)}
+.c-front.r-rare{border-color:var(--rare);animation:rare-pulse 2.2s ease-in-out infinite}
+.c-front.r-legendary{border-color:var(--legendary);animation:leg-pulse 1.6s ease-in-out infinite}
+@keyframes rare-pulse{0%,100%{box-shadow:0 0 24px rgba(212,160,23,0.5),0 0 60px rgba(212,160,23,0.15),inset 0 0 40px rgba(212,160,23,0.04)}50%{box-shadow:0 0 36px rgba(212,160,23,0.75),0 0 80px rgba(212,160,23,0.25),inset 0 0 60px rgba(212,160,23,0.07)}}
+@keyframes leg-pulse{0%,100%{box-shadow:0 0 36px rgba(142,68,173,0.65),0 0 80px rgba(142,68,173,0.25),inset 0 0 60px rgba(142,68,173,0.07)}50%{box-shadow:0 0 56px rgba(142,68,173,0.95),0 0 120px rgba(142,68,173,0.4),inset 0 0 80px rgba(142,68,173,0.12)}}
+.c-rarity{font-size:9px;letter-spacing:3px;text-transform:uppercase;padding:3px 12px;border-radius:20px;font-weight:700;margin-bottom:14px}
+.c-rarity.r-common{background:rgba(160,160,176,0.12);color:var(--common)}
+.c-rarity.r-uncommon{background:rgba(41,128,185,0.15);color:var(--uncommon)}
+.c-rarity.r-rare{background:rgba(212,160,23,0.15);color:var(--rare)}
+.c-rarity.r-legendary{background:rgba(142,68,173,0.2);color:var(--legendary)}
+.c-name{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:2px;text-align:center;line-height:1.1;padding:0 8px}
+.c-divider{height:2px;border-radius:1px;margin:12px auto;width:50px;flex-shrink:0}
+.c-desc{font-size:13px;color:var(--muted);text-align:center;line-height:1.55;padding:0 4px}
+
+/* action area */
+.action-area{flex-shrink:0;padding:0 20px 10px;display:flex;justify-content:center}
+.next-btn{width:100%;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:14px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;padding:13px;cursor:pointer;transition:all 0.2s;opacity:0;pointer-events:none}
+.next-btn.show{opacity:1;pointer-events:all}
+.next-btn:active{transform:scale(0.97);background:#22211e}
+
+/* history */
+.history-strip{display:flex;gap:6px;padding:8px 14px;overflow-x:auto;flex-shrink:0;border-top:1px solid var(--border);min-height:50px;align-items:center;scrollbar-width:none}
+.history-strip::-webkit-scrollbar{display:none}
+.h-empty{color:var(--muted);font-size:11px;font-style:italic}
+.h-item{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:52px;max-width:52px;padding:5px 6px;background:var(--surface);border-radius:8px;border:1px solid var(--border);flex-shrink:0;cursor:default}
+.h-player{font-size:8px;color:var(--muted);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-card{font-size:8px;color:var(--text);font-weight:600;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-dot{width:4px;height:4px;border-radius:50%;margin-top:1px;flex-shrink:0}
+
+/* ── CARD EDITOR ── */
+#card-editor{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;justify-content:flex-end}
+#card-editor.open{display:flex}
+.ed-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.72)}
+.ed-sheet{position:relative;background:var(--surface);border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column;border:1px solid var(--border);border-bottom:none}
+.ed-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0}
+.ed-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ed-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px}
+.ed-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;border-radius:8px}
+.ed-close:active{color:var(--text)}
+.ed-body{overflow-y:auto;flex:1}
+.ed-section-hdr{padding:10px 20px 4px;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-weight:700;position:sticky;top:0;background:var(--surface);z-index:1;border-bottom:1px solid rgba(46,44,40,0.3)}
+.ed-row{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid rgba(46,44,40,0.5)}
+.ed-card-name{flex:1;font-size:13px;font-weight:500;line-height:1.3}
+.rarity-sel{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 4px;cursor:pointer;max-width:90px}
+.toggle{position:relative;width:38px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.tog-sl{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:background 0.25s}
+.tog-sl::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--muted);border-radius:50%;transition:transform 0.25s,background 0.25s}
+.toggle input:checked+.tog-sl{background:rgba(212,160,23,0.3)}
+.toggle input:checked+.tog-sl::before{transform:translateX(16px);background:var(--rare)}
+
+/* ── PARTICLES ── */
+#pcvs{position:fixed;inset:0;pointer-events:none;z-index:200;display:none}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup" class="screen active">
+  <div class="setup-logo">DEAL<br>BONUS</div>
+  <div class="setup-sub">Monopoly Deal · Companion</div>
+  <div class="players-list" id="players-list"></div>
+  <button class="add-btn" id="add-btn">＋ Add Player</button>
+  <button class="start-btn" id="start-btn" disabled>START GAME</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="game-header">
+    <div class="round-info">
+      <div class="round-label" id="round-label">ROUND 1</div>
+      <div class="direction-label" id="dir-label">▶ Clockwise</div>
+    </div>
+    <div class="header-btns">
+      <button class="icon-btn" id="mute-btn">🔊</button>
+      <button class="icon-btn" id="editor-btn">⚙️</button>
+    </div>
+  </div>
+  <div class="player-strip" id="player-strip"></div>
+  <div class="card-area">
+    <div class="turn-label" id="turn-label">Loading…</div>
+    <div class="card-wrap" id="card-wrap">
+      <div class="card-inner" id="card-inner">
+        <div class="c-face c-back">
+          <div class="c-back-logo">DEAL<br>BONUS</div>
+          <div class="c-back-hint">Tap to reveal</div>
+        </div>
+        <div class="c-face c-front" id="c-front"></div>
+      </div>
+    </div>
+  </div>
+  <div class="action-area">
+    <button class="next-btn" id="next-btn">NEXT PLAYER →</button>
+  </div>
+  <div class="history-strip" id="history-strip">
+    <span class="h-empty">No cards drawn yet</span>
+  </div>
+</div>
+
+<!-- CARD EDITOR -->
+<div id="card-editor">
+  <div class="ed-backdrop" id="ed-backdrop"></div>
+  <div class="ed-sheet">
+    <div class="ed-handle"></div>
+    <div class="ed-header">
+      <div class="ed-title">CARD EDITOR</div>
+      <button class="ed-close" id="ed-close">✕</button>
+    </div>
+    <div class="ed-body" id="ed-body"></div>
+  </div>
+</div>
+
+<canvas id="pcvs"></canvas>
+
+<script>
+// ═══════════════════════════════
+// CARD DATA
+// ═══════════════════════════════
+const CARDS = [
+  {id:1, name:'Extra Draw',       rarity:'common',    enabled:true, desc:'Draw 1 extra card before your normal 2.'},
+  {id:2, name:'Four Play',        rarity:'common',    enabled:true, desc:'Play 4 cards instead of 3 this turn.'},
+  {id:3, name:'No Block',         rarity:'common',    enabled:true, desc:'Your rent cards cannot be blocked with Just Say No this turn.'},
+  {id:4, name:'Draw and Discard', rarity:'common',    enabled:true, desc:'Draw 3 cards before your normal 2, then discard 1.'},
+  {id:5, name:'Impression',       rarity:'common',    enabled:true, desc:'Do an impression of another player. They decide if it was good enough. If yes, draw 1 extra card.'},
+  {id:6, name:'Silence',          rarity:'common',    enabled:true, desc:'You cannot speak for the rest of this round. If you do, skip your next turn.'},
+  {id:7, name:'High Five',        rarity:'common',    enabled:true, desc:'High five every other player before drawing your cards. If anyone refuses, they skip their next turn.'},
+  {id:8, name:"Dealer's Choice",  rarity:'common',    enabled:true, desc:'The player to your right draws your 2 cards for you and hands them over.'},
+  {id:9, name:'Take From the Rich',rarity:'common',   enabled:true, desc:'The player with the most money cards must give you 1.'},
+  {id:10,name:'Favourite Colour', rarity:'common',    enabled:true, desc:'Announce your favourite property colour. Carry on regardless.'},
+  {id:11,name:'Fresh Hand',       rarity:'uncommon',  enabled:true, desc:'Swap your entire hand with the top 5 cards from the draw pile.'},
+  {id:12,name:'Peek',             rarity:'uncommon',  enabled:true, desc:'Choose a player. They must show you their full hand.'},
+  {id:13,name:'Pickpocket',       rarity:'uncommon',  enabled:true, desc:'Steal one money card from any other player.'},
+  {id:14,name:'Protected',        rarity:'uncommon',  enabled:true, desc:'Your properties cannot be stolen this turn, except to pay a debt.'},
+  {id:15,name:'Reverse',          rarity:'uncommon',  enabled:true, desc:'Reverse the direction of play from this turn onwards.', effect:'reverse'},
+  {id:16,name:'Sit Out',          rarity:'uncommon',  enabled:true, desc:'Miss your turn, but draw 4 cards as compensation.'},
+  {id:17,name:'Question Mode',    rarity:'uncommon',  enabled:true, desc:'Speak only in questions until your next turn. Any slip-up and another player can make you discard 1 card.'},
+  {id:18,name:'Hand Swap',        rarity:'rare',      enabled:true, desc:'Swap your entire hand with any player of your choice.'},
+  {id:19,name:'Bank Swap',        rarity:'rare',      enabled:true, desc:'Swap your money bank with any other player\'s bank.'},
+  {id:20,name:'Board Swap',       rarity:'rare',      enabled:true, desc:'Swap your entire property board with any other player\'s.'},
+  {id:21,name:'Blind Steal',      rarity:'rare',      enabled:true, desc:'Take any one card from any player\'s hand at random (they fan their cards face down).'},
+  {id:22,name:'Double Rent',      rarity:'rare',      enabled:true, desc:'Any rent you charge this turn is doubled.'},
+  {id:23,name:'Stack the Deck',   rarity:'rare',      enabled:true, desc:'Look at the top 5 cards of the draw pile and rearrange them in any order.'},
+  {id:24,name:'Open Book',        rarity:'rare',      enabled:true, desc:'Show the next player your hand before they draw. They must keep that information to themselves.'},
+  {id:25,name:'Deal Breaker',     rarity:'legendary', enabled:true, desc:'Steal a complete property set from any player, as if you played a Deal Breaker card.'},
+  {id:26,name:'Double Turn',      rarity:'legendary', enabled:true, desc:'Take an extra full turn immediately after this one.', effect:'double_turn'},
+  {id:27,name:'Untouchable',      rarity:'legendary', enabled:true, desc:'All rent charges against you are void until your next turn.'},
+  {id:28,name:'Purge',            rarity:'legendary', enabled:true, desc:'Force any one player to discard down to 3 cards. They choose which to keep.'},
+  {id:29,name:'Pass It On',       rarity:'legendary', enabled:true, desc:'Everyone passes their entire hand to the left simultaneously.'},
+];
+
+const WEIGHTS = {common:40, uncommon:35, rare:20, legendary:5};
+const P_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+const R_COLOR  = {common:'var(--common)',uncommon:'var(--uncommon)',rare:'var(--rare)',legendary:'var(--legendary)'};
+
+// ═══════════════════════════════
+// STATE
+// ═══════════════════════════════
+let S = {
+  players: [],      // {name, color, missNext}
+  idx: 0,           // current player index
+  dir: 1,           // 1=clockwise, -1=counter-clockwise
+  turnCount: 0,
+  history: [],
+  muted: false,
+  revealed: false,
+  lastCard: null,
+  doubleTurn: false,
+};
+
+// ═══════════════════════════════
+// AUDIO
+// ═══════════════════════════════
+let actx = null;
+function ac() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, start, dur, type='sine', vol=0.28) {
+  try {
+    const c = ac(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    o.start(start); o.stop(start + dur + 0.01);
+  } catch(e){}
+}
+function playCard(rarity) {
+  if (S.muted) return;
+  try {
+    const t = ac().currentTime;
+    if (rarity === 'common') {
+      tone(440, t,      0.12, 'triangle', 0.22);
+      tone(554, t+0.1,  0.12, 'triangle', 0.18);
+    } else if (rarity === 'uncommon') {
+      tone(330, t,      0.18, 'sine', 0.26);
+      tone(440, t+0.14, 0.18, 'sine', 0.24);
+      tone(554, t+0.28, 0.22, 'sine', 0.22);
+    } else if (rarity === 'rare') {
+      [330,415,494,659].forEach((f,i) => tone(f, t+i*0.09, 0.45, 'sine', 0.22));
+      tone(165, t, 0.6, 'sine', 0.15);
+    } else if (rarity === 'legendary') {
+      [261,329,392,523,659,784].forEach((f,i) => {
+        tone(f,   t+i*0.09, 0.65-i*0.04, 'sine',     0.24);
+        tone(f*2, t+i*0.09, 0.3,         'triangle', 0.08);
+      });
+      tone(65,  t,    1.8, 'sawtooth', 0.14);
+      tone(130, t+0.6,0.9, 'sine',     0.10);
+    }
+  } catch(e){}
+}
+
+// ═══════════════════════════════
+// PARTICLES
+// ═══════════════════════════════
+const cvs = document.getElementById('pcvs');
+const pctx = cvs.getContext('2d');
+let parts = [], praf = null;
+function burst(cx, cy) {
+  cvs.width  = innerWidth;
+  cvs.height = innerHeight;
+  cvs.style.display = 'block';
+  const cols = ['#8e44ad','#b05fd8','#d4a017','#f0ede6','#e74c3c','#3498db','#f39c12'];
+  parts = Array.from({length:90}, () => {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 2.5 + Math.random() * 7;
+    return {x:cx, y:cy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 2.5,
+      life:1, dec:0.014+Math.random()*0.018,
+      sz:3+Math.random()*5.5, col:cols[Math.random()*cols.length|0],
+      rect:Math.random()>0.55};
+  });
+  if (praf) cancelAnimationFrame(praf);
+  animParts();
+}
+function animParts() {
+  pctx.clearRect(0,0,cvs.width,cvs.height);
+  parts.forEach(p => {
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.18; p.vx*=0.985; p.life-=p.dec;
+    pctx.globalAlpha = Math.max(0, p.life);
+    pctx.fillStyle = p.col;
+    if (p.rect) pctx.fillRect(p.x-p.sz/2, p.y-p.sz/2, p.sz, p.sz);
+    else { pctx.beginPath(); pctx.arc(p.x,p.y,p.sz/2,0,Math.PI*2); pctx.fill(); }
+  });
+  pctx.globalAlpha = 1;
+  parts = parts.filter(p => p.life > 0);
+  if (parts.length) praf = requestAnimationFrame(animParts);
+  else cvs.style.display = 'none';
+}
+
+// ═══════════════════════════════
+// WEIGHTED DRAW
+// ═══════════════════════════════
+function drawCard() {
+  const pool = CARDS.filter(c => c.enabled);
+  if (!pool.length) return null;
+  const byR = {};
+  pool.forEach(c => (byR[c.rarity] = byR[c.rarity]||[]).push(c));
+  const entries = Object.keys(byR).map(r => ({r, cards:byR[r], w:WEIGHTS[r]||0}));
+  const total = entries.reduce((s,e)=>s+e.w,0);
+  if (!total) return pool[Math.random()*pool.length|0];
+  let r = Math.random()*total;
+  for (const e of entries) { r -= e.w; if (r<=0) return e.cards[Math.random()*e.cards.length|0]; }
+  return pool[0];
+}
+
+// ═══════════════════════════════
+// GAME LOGIC
+// ═══════════════════════════════
+function curPlayer() { return S.players[S.idx]; }
+
+function advance() {
+  const card = S.lastCard;
+  if (card?.effect === 'reverse') {
+    S.dir *= -1;
+  }
+  if (card?.effect === 'double_turn') {
+    S.doubleTurn = true;
+  }
+  if (S.doubleTurn) {
+    S.doubleTurn = false;
+    startTurn();
+    return;
+  }
+  let next = (S.idx + S.dir + S.players.length) % S.players.length;
+  // Check if we wrapped (for round count)
+  const wrapped = S.dir===1 ? (next < S.idx) : (next > S.idx);
+  if (wrapped) S.turnCount += S.players.length;
+  // Skip flagged player
+  if (S.players[next].missNext) {
+    S.players[next].missNext = false;
+    next = (next + S.dir + S.players.length) % S.players.length;
+    const w2 = S.dir===1 ? (next < (S.idx+S.dir+S.players.length)%S.players.length) : (next > (S.idx+S.dir+S.players.length)%S.players.length);
+    if (w2) S.turnCount += S.players.length;
+  }
+  S.idx = next;
+  startTurn();
+}
+
+function startTurn() {
+  S.revealed = false;
+  S.lastCard  = null;
+  renderGame();
+}
+
+// ═══════════════════════════════
+// RENDER
+// ═══════════════════════════════
+function renderSetup() {
+  const list = document.getElementById('players-list');
+  list.innerHTML = '';
+  S.players.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <div class="player-swatch" style="background:${p.color}"></div>
+      <input type="text" placeholder="Player ${i+1}" value="${p.name}" maxlength="12" data-i="${i}">
+      ${S.players.length>2 ? `<button class="remove-btn" data-i="${i}">✕</button>`:''}
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('input').forEach(el =>
+    el.addEventListener('input', e => S.players[+e.target.dataset.i].name = e.target.value)
+  );
+  list.querySelectorAll('.remove-btn').forEach(el =>
+    el.addEventListener('click', e => { S.players.splice(+e.target.dataset.i,1); renderSetup(); })
+  );
+  document.getElementById('add-btn').style.display = S.players.length>=6 ? 'none' : '';
+  document.getElementById('start-btn').disabled = S.players.length < 2;
+}
+
+function renderStrip() {
+  const strip = document.getElementById('player-strip');
+  strip.innerHTML = '';
+  S.players.forEach((p,i) => {
+    const el = document.createElement('div');
+    el.className = 'p-chip';
+    el.dataset.i = i;
+    el.innerHTML = `
+      <div class="p-avatar${i===S.idx?' active':''}${p.missNext?' miss-flag':''}" style="background:${p.color}22;border-color:${i===S.idx?p.color:'transparent'}">
+        <span style="color:${p.color};font-size:17px">${(p.name||`P${i+1}`)[0].toUpperCase()}</span>
+      </div>
+      <div class="p-name${i===S.idx?' active':''}">${p.name||`P${i+1}`}</div>
+    `;
+    strip.appendChild(el);
+  });
+  // Scroll active chip into view
+  const active = strip.children[S.idx];
+  if (active) setTimeout(()=>active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),80);
+}
+
+function renderCard() {
+  const inner = document.getElementById('card-inner');
+  const front  = document.getElementById('c-front');
+  const nextBtn = document.getElementById('next-btn');
+  if (!S.revealed) {
+    inner.classList.add('no-anim');
+    inner.classList.remove('flipped');
+    requestAnimationFrame(()=>{ inner.classList.remove('no-anim'); });
+    front.className = 'c-face c-front';
+    front.innerHTML = '';
+    nextBtn.classList.remove('show');
+  } else {
+    const c = S.lastCard, r = c.rarity;
+    front.className = `c-face c-front r-${r}`;
+    front.innerHTML = `
+      <div class="c-rarity r-${r}">${r.toUpperCase()}</div>
+      <div class="c-name">${c.name}</div>
+      <div class="c-divider" style="background:${R_COLOR[r]}"></div>
+      <div class="c-desc">${c.desc}</div>
+    `;
+    inner.classList.add('flipped');
+    nextBtn.classList.add('show');
+  }
+}
+
+function renderGame() {
+  const p = curPlayer();
+  const name = p.name || `Player ${S.idx+1}`;
+  const lbl  = document.getElementById('turn-label');
+  if (!S.revealed) {
+    lbl.innerHTML = `<strong style="color:${p.color}">${name}</strong> — tap to draw your bonus card`;
+  } else {
+    lbl.innerHTML = `<strong style="color:${p.color}">${name}</strong> drew:`;
+  }
+  const round = Math.floor(S.turnCount/S.players.length)+1;
+  document.getElementById('round-label').textContent = `ROUND ${round}`;
+  document.getElementById('dir-label').textContent    = S.dir===1 ? '▶ Clockwise' : '◀ Counter-clockwise';
+  renderStrip();
+  renderCard();
+}
+
+function renderHistory() {
+  const strip = document.getElementById('history-strip');
+  if (!S.history.length) { strip.innerHTML = '<span class="h-empty">No cards drawn yet</span>'; return; }
+  strip.innerHTML = '';
+  [...S.history].reverse().slice(0,10).forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'h-item';
+    el.innerHTML = `
+      <div class="h-player" style="color:${h.pc}">${h.pn}</div>
+      <div class="h-card">${h.cn}</div>
+      <div class="h-dot" style="background:${R_COLOR[h.r]}"></div>
+    `;
+    strip.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════
+// CARD EDITOR
+// ═══════════════════════════════
+function renderEditor() {
+  const body = document.getElementById('ed-body');
+  body.innerHTML = '';
+  ['common','uncommon','rare','legendary'].forEach(r => {
+    const hdr = document.createElement('div');
+    hdr.className = 'ed-section-hdr';
+    hdr.textContent = r.toUpperCase();
+    body.appendChild(hdr);
+    CARDS.filter(c => c.rarity === r).forEach(card => {
+      const row = document.createElement('div');
+      row.className = 'ed-row';
+      row.innerHTML = `
+        <div class="ed-card-name">${card.name}</div>
+        <select class="rarity-sel" data-id="${card.id}">
+          ${['common','uncommon','rare','legendary'].map(rv=>
+            `<option value="${rv}"${card.rarity===rv?' selected':''}>${rv}</option>`
+          ).join('')}
+        </select>
+        <label class="toggle">
+          <input type="checkbox"${card.enabled?' checked':''} data-id="${card.id}">
+          <span class="tog-sl"></span>
+        </label>
+      `;
+      body.appendChild(row);
+    });
+  });
+  body.querySelectorAll('.rarity-sel').forEach(el =>
+    el.addEventListener('change', e => {
+      const c = CARDS.find(c=>c.id===+e.target.dataset.id);
+      if (c) c.rarity = e.target.value;
+    })
+  );
+  body.querySelectorAll('.toggle input').forEach(el =>
+    el.addEventListener('change', e => {
+      const c = CARDS.find(c=>c.id===+e.target.dataset.id);
+      if (c) c.enabled = e.target.checked;
+    })
+  );
+}
+
+// ═══════════════════════════════
+// EVENT HANDLERS
+// ═══════════════════════════════
+
+// Setup
+document.getElementById('add-btn').addEventListener('click', () => {
+  if (S.players.length>=6) return;
+  S.players.push({name:'', color:P_COLORS[S.players.length], missNext:false});
+  renderSetup();
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  S.players.forEach((p,i) => { if(!p.name) p.name=`Player ${i+1}`; });
+  S.idx=0; S.dir=1; S.turnCount=0; S.history=[];
+  S.revealed=false; S.lastCard=null; S.doubleTurn=false;
+  S.players.forEach(p => p.missNext=false);
+  showScreen('game');
+  renderGame();
+  renderHistory();
+});
+
+// Card tap
+document.getElementById('card-wrap').addEventListener('click', () => {
+  if (S.revealed) return;
+  const card = drawCard();
+  if (!card) return;
+  S.lastCard = card;
+  S.revealed = true;
+  const p = curPlayer();
+  S.history.push({pn:p.name, pc:p.color, cn:card.name, r:card.rarity});
+  renderGame();
+  renderHistory();
+  playCard(card.rarity);
+  if (card.rarity === 'legendary') {
+    setTimeout(() => {
+      const rect = document.getElementById('card-wrap').getBoundingClientRect();
+      burst(rect.left + rect.width/2, rect.top + rect.height/2);
+    }, 420);
+  }
+});
+
+// Next player
+document.getElementById('next-btn').addEventListener('click', () => {
+  advance();
+  renderHistory();
+});
+
+// Tap player chip to toggle miss-next-turn (for other players)
+document.getElementById('player-strip').addEventListener('click', e => {
+  const chip = e.target.closest('.p-chip');
+  if (!chip) return;
+  const i = +chip.dataset.i;
+  if (i === S.idx) return; // can't flag active player
+  S.players[i].missNext = !S.players[i].missNext;
+  renderStrip();
+});
+
+// Mute
+document.getElementById('mute-btn').addEventListener('click', () => {
+  S.muted = !S.muted;
+  document.getElementById('mute-btn').textContent = S.muted ? '🔇' : '🔊';
+});
+
+// Editor open/close
+document.getElementById('editor-btn').addEventListener('click', () => {
+  renderEditor();
+  document.getElementById('card-editor').classList.add('open');
+});
+document.getElementById('ed-close').addEventListener('click', closeEditor);
+document.getElementById('ed-backdrop').addEventListener('click', closeEditor);
+function closeEditor() { document.getElementById('card-editor').classList.remove('open'); }
+
+// ═══════════════════════════════
+// SCREEN UTIL
+// ═══════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════
+// INIT
+// ═══════════════════════════════
+S.players = [
+  {name:'', color:P_COLORS[0], missNext:false},
+  {name:'', color:P_COLORS[1], missNext:false},
+];
+renderSetup();
+</script>
+</body>
+</html>
