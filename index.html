@@ -3,13 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet>
-  <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     :root{
       --bg:#F2EDD7;--surface:#FFFEF5;--red:#CC0000;--navy:#003580;
@@ -156,8 +151,9 @@
 
     @keyframes hint-pulse{0%,100%{opacity:.38}50%{opacity:.88}}
     @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-  </style>
-</helmet>
+</style>
+</head>
+<body>
 
 <!-- SETUP -->
 <div id="setup" class="screen active">
@@ -219,10 +215,9 @@
 </div>
 
 <canvas id="pcvs" style="position:fixed;inset:0;pointer-events:none;z-index:200;display:none"></canvas>
-</x-dc>
-<script type="text/x-dc" data-dc-script>
-class Component extends DCLogic {
-  componentDidMount() {
+<script>
+class Component {
+  constructor() {
     this.CARDS = [
       {id:1,name:'Extra Draw',rarity:'common',enabled:true,desc:'Draw 1 extra card before your normal 2.'},
       {id:2,name:'Four Play',rarity:'common',enabled:true,desc:'Play 4 cards instead of 3 this turn.'},
@@ -642,6 +637,8 @@ class Component extends DCLogic {
     document.getElementById('ed-backdrop').addEventListener('click',()=>this.closeEditor());
   }
 }
+
+document.addEventListener('DOMContentLoaded',()=>new Component());
 </script>
 </body>
 </html>
